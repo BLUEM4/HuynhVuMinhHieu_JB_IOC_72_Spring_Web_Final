@@ -13,11 +13,18 @@ import com.example.coursemanagement.mapper.CourseMapper;
 import com.example.coursemanagement.repository.CourseRepository;
 import com.example.coursemanagement.repository.UserRepository;
 import com.example.coursemanagement.service.CourseService;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -30,10 +37,32 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public PagedResponse<CourseResponse> getCourses(String search, Integer teacherId,
                                                     CourseStatus status, Pageable pageable) {
-        String ilikeSearch = (search != null && !search.trim().isEmpty()) ? search : null;
 
-        Page<CourseResponse> page = courseRepository
-                .searchCourses(ilikeSearch, teacherId, status, pageable)
+        Specification<Course> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Chỉ fetch teacher khi đây là query lấy dữ liệu thật (không phải count query của Pageable)
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("teacher", JoinType.LEFT);
+            }
+
+            if (search != null && !search.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("title")), "%" + search.trim().toLowerCase() + "%"));
+            }
+            if (teacherId != null) {
+                predicates.add(cb.equal(root.get("teacher").get("userId"), teacherId));
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                query.orderBy(cb.desc(root.get("createdAt")));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<CourseResponse> page = courseRepository.findAll(spec, pageable)
                 .map(courseMapper::toResponse);
 
         return PagedResponse.of(page);

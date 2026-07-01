@@ -28,11 +28,11 @@ public class LessonServiceImpl implements LessonService {
     private final LessonMapper lessonMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<LessonResponse> getLessonsByCourse(Integer courseId, String username) {
         findCourseById(courseId);
         User user = findUserByUsername(username);
 
-        // STUDENT chỉ thấy lesson đã published
         if (user.getRole() == UserRole.STUDENT) {
             return lessonRepository
                     .findByCourse_CourseIdAndIsPublishedOrderByOrderIndex(courseId, true)
@@ -41,7 +41,6 @@ public class LessonServiceImpl implements LessonService {
                     .toList();
         }
 
-        // ADMIN và TEACHER thấy tất cả
         return lessonRepository
                 .findByCourse_CourseIdOrderByOrderIndex(courseId)
                 .stream()
@@ -50,11 +49,11 @@ public class LessonServiceImpl implements LessonService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LessonResponse getLessonById(Integer lessonId, String username) {
         Lesson lesson = findLessonById(lessonId);
         User user = findUserByUsername(username);
 
-        // STUDENT chỉ xem được lesson đã published
         if (user.getRole() == UserRole.STUDENT && !lesson.isPublished()) {
             throw AppException.forbidden("Lesson chưa được published");
         }

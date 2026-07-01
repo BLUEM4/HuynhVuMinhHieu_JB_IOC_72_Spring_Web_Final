@@ -35,6 +35,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CourseMapper courseMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<EnrollmentResponse> getMyEnrollments(String username) {
         User student = findUserByUsername(username);
         return enrollmentRepository.findByStudent_UserId(student.getUserId())
@@ -44,11 +45,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public EnrollmentResponse getEnrollmentById(Integer enrollmentId, String username) {
         Enrollment enrollment = findEnrollmentById(enrollmentId);
         User user = findUserByUsername(username);
 
-        // Chỉ được xem enrollment của chính mình
         if (!enrollment.getStudent().getUserId().equals(user.getUserId())) {
             throw AppException.forbidden("Bạn không có quyền xem enrollment này");
         }
