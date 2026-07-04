@@ -3,6 +3,7 @@ package com.example.coursemanagement.dto.request;
 import com.example.coursemanagement.entity.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,5 +26,6 @@ public class CreateUserRequest {
     @NotBlank(message = "Họ tên không được để trống")
     private String fullName;
 
+    @NotNull(message = "Vai trò (Role) không được để trống")
     private UserRole role = UserRole.STUDENT;
 }

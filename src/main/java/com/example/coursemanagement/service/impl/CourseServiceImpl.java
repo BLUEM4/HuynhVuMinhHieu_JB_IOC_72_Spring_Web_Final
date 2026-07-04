@@ -11,6 +11,7 @@ import com.example.coursemanagement.entity.enums.CourseStatus;
 import com.example.coursemanagement.entity.enums.UserRole;
 import com.example.coursemanagement.mapper.CourseMapper;
 import com.example.coursemanagement.repository.CourseRepository;
+import com.example.coursemanagement.repository.EnrollmentRepository;
 import com.example.coursemanagement.repository.UserRepository;
 import com.example.coursemanagement.service.CourseService;
 import jakarta.persistence.criteria.JoinType;
@@ -34,14 +35,14 @@ public class CourseServiceImpl implements CourseService {
     private final UserRepository userRepository;
     private final CourseMapper courseMapper;
 
+    private final EnrollmentRepository enrollmentRepository;
+
     @Override
     public PagedResponse<CourseResponse> getCourses(String search, Integer teacherId,
                                                     CourseStatus status, Pageable pageable) {
 
         Specification<Course> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            // Chỉ fetch teacher khi đây là query lấy dữ liệu thật (không phải count query của Pageable)
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("teacher", JoinType.LEFT);
             }
@@ -120,6 +121,9 @@ public class CourseServiceImpl implements CourseService {
     public void deleteCourse(Integer id) {
         if (!courseRepository.existsById(id))
             throw AppException.notFound("Course không tồn tại");
+        if (enrollmentRepository.existsByCourse_CourseId(id)) {
+            throw AppException.badRequest("Không thể xóa! Khóa học này đã có học viên đăng ký.");
+        }
         courseRepository.deleteById(id);
     }
 

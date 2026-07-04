@@ -1,6 +1,7 @@
 package com.example.coursemanagement.controller;
 
 import com.example.coursemanagement.config.ApiResponse;
+import com.example.coursemanagement.service.TokenBlacklistService;
 import com.example.coursemanagement.dto.request.LoginRequest;
 import com.example.coursemanagement.dto.response.AuthResponse;
 import com.example.coursemanagement.dto.response.UserResponse;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // POST /api/auth/login
     @PostMapping("/login")
@@ -29,9 +31,12 @@ public class AuthController {
 
     // POST /api/auth/logout — thêm vào AuthController
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
-        // JWT stateless — chỉ cần trả về success
-        // Client tự xóa token ở phía mình
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(value = "Authorization", required = false) String bearerToken) {
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            String token = bearerToken.substring(7);
+            tokenBlacklistService.addToBlacklist(token);
+        }
         return ResponseEntity.ok(ApiResponse.ok("Đăng xuất thành công", null));
     }
 
@@ -42,8 +47,16 @@ public class AuthController {
         String token = bearerToken.startsWith("Bearer ")
                 ? bearerToken.substring(7) : bearerToken;
         boolean valid = authService.verifyToken(token);
-        return ResponseEntity.ok(ApiResponse.ok("Token hợp lệ", valid));
+        if (!valid) {
+            // Trả về mã HTTP 401 và gọi ApiResponse.fail()
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.fail("Token không hợp lệ hoặc đã hết hạn"));
+        }
+
+        // Trả về mã HTTP 200 và gọi ApiResponse.ok()
+        return ResponseEntity.ok(ApiResponse.ok("Token hợp lệ", true));
     }
+
 
     // GET /api/auth/me
     @GetMapping("/me")
